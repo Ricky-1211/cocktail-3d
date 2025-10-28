@@ -2,7 +2,7 @@
 
 Welcome to the **3D Mocktail Experience** — an interactive web platform where users can **explore, customize, and order handcrafted mocktails** in a vibrant, 3D environment. This project combines **modern web design**, **immersive 3D visuals**, and **seamless e-commerce flow** to deliver a refreshing digital bar experience.
 
----
+##Website link-- https://cocktail-3d.vercel.app/
 
 ## 🚀 Overview
 
@@ -108,20 +108,4 @@ A well-optimized, user-friendly layout ensures visitors stay, explore, and order
 
 ---
 
-## 🛠️ Installation & Setup
 
-```bash
-# Clone the repository
-git clone https://github.com/yourusername/3d-mocktail-website.git
-
-# Navigate into the project directory
-cd 3d-mocktail-website
-
-# Install dependencies
-npm install
-
-# Run the development server
-npm run dev
-
-# Build for production
-npm run build
