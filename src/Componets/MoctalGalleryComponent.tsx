@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 
@@ -15,21 +15,53 @@ interface MoctalPanelProps {
 const MoctalPanel = ({ id, image, title, subtitle, description }: MoctalPanelProps) => {
   const panelRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const [imageError, setImageError] = useState(false);
+
+  // Preload image
+  useEffect(() => {
+    const img = new Image();
+    img.onload = () => setImageLoaded(true);
+    img.onerror = () => setImageError(true);
+    img.src = image;
+  }, [image]);
 
   return (
     <section
       ref={panelRef}
-      className="moctal-panel relative w-screen h-screen flex-shrink-0 flex items-center justify-center perspective-1000"
+      className="moctal-panel relative w-screen h-screen flex-shrink-0 flex items-center justify-center perspective-1000 overflow-hidden"
       data-panel-id={id}
     >
       {/* Background Image */}
       <div
-        className="absolute inset-0 bg-cover bg-center transform-gpu transition-transform duration-1000"
+        className="absolute inset-0 w-full h-full transform-gpu transition-transform duration-1000"
         style={{
-          backgroundImage: `url(${image})`,
           transform: 'translateZ(0)',
         }}
       >
+        {imageError ? (
+          <div className="w-full h-full bg-gradient-to-br from-purple-900/50 to-amber-900/50 flex items-center justify-center">
+            <div className="text-center text-white/50">
+              <p className="text-lg">Image failed to load</p>
+            </div>
+          </div>
+        ) : (
+          <>
+            <img
+              src={image}
+              alt={title}
+              className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ${
+                imageLoaded ? 'opacity-100' : 'opacity-0'
+              }`}
+              onLoad={() => setImageLoaded(true)}
+              onError={() => setImageError(true)}
+              loading="lazy"
+            />
+            {!imageLoaded && (
+              <div className="absolute inset-0 bg-gradient-to-br from-purple-900/50 to-amber-900/50 animate-pulse" />
+            )}
+          </>
+        )}
         <div className="absolute inset-0 bg-black/40 backdrop-blur-[1px]"></div>
       </div>
 
@@ -78,8 +110,6 @@ const MoctalGallery = () => {
         const lenis = new Lenis({
           duration: 1.2,
           easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-          smooth: true,
-          direction: 'horizontal', // Enable horizontal scrolling
         });
 
         let rafId = 0;
@@ -148,14 +178,16 @@ const MoctalGallery = () => {
 
   useEffect(() => {
     const ctx = gsap.context(() => {
-      if (!horizontalRef.current || !containerRef.current) return;
+      if (!horizontalRef.current || !containerRef.current || !galleryRef.current) return;
 
       const panels = gsap.utils.toArray('.moctal-panel') as HTMLElement[];
+      if (panels.length === 0) return;
+
       const totalWidth = panels.length * window.innerWidth;
 
-      // Set up horizontal scrolling
-      gsap.to(horizontalRef.current, {
-        x: () => - (totalWidth - window.innerWidth),
+      // Set up horizontal scrolling first
+      const horizontalAnimation = gsap.to(horizontalRef.current, {
+        x: () => -(totalWidth - window.innerWidth),
         ease: 'none',
         scrollTrigger: {
           trigger: galleryRef.current,
@@ -165,15 +197,27 @@ const MoctalGallery = () => {
           pin: true,
           anticipatePin: 1,
           invalidateOnRefresh: true,
+          id: 'horizontal',
         }
       });
 
-      // Individual panel animations
-      panels.forEach((panel, index) => {
-        const content = panel.querySelector('.relative.z-10') as HTMLElement;
-        const background = panel.querySelector('.absolute.inset-0') as HTMLElement;
+      // Ensure the scroll trigger was created
+      if (!horizontalAnimation.scrollTrigger) {
+        console.error('Failed to create horizontal scroll trigger');
+        return;
+      }
 
-        // Initial state
+      // Store panel data for unified animation
+      const panelData = panels.map((panel, index) => ({
+        panel,
+        content: panel.querySelector('.relative.z-10') as HTMLElement,
+        background: panel.querySelector('.absolute.inset-0')?.parentElement as HTMLElement,
+        index,
+        panelStart: index * window.innerWidth,
+      }));
+
+      // Set initial states
+      panelData.forEach(({ panel, content, background }) => {
         gsap.set(panel, {
           opacity: 0,
           rotationY: -30,
@@ -181,140 +225,132 @@ const MoctalGallery = () => {
           transformPerspective: 1000,
         });
 
-        gsap.set(content, {
-          x: 100,
-          opacity: 0,
-          scale: 0.9,
-        });
+        if (content) {
+          gsap.set(content, {
+            x: 100,
+            opacity: 0,
+            scale: 0.9,
+          });
+        }
 
-        gsap.set(background, {
-          scale: 1.2,
-        });
+        if (background) {
+          gsap.set(background, {
+            scale: 1.2,
+          });
+        }
+      });
 
-        // Create scroll trigger for each panel with horizontal positioning
-        ScrollTrigger.create({
-          trigger: panel,
-          start: () => `left ${window.innerWidth * 0.3}`,
-          end: () => `left ${-window.innerWidth * 0.3}`,
-          scrub: 1,
-          containerAnimation: ScrollTrigger.getById('horizontal') as any,
-          onEnter: () => {
-            gsap.to(panel, {
-              opacity: 1,
-              rotationY: 0,
-              scale: 1,
-              duration: 1.5,
-              ease: 'power2.out',
-            });
+      // Single ScrollTrigger to handle all panel animations based on scroll progress
+      ScrollTrigger.create({
+        trigger: galleryRef.current,
+        start: 'top top',
+        end: () => `+=${totalWidth}`,
+        scrub: 1,
+        onUpdate: (self) => {
+          const scrollProgress = self.progress;
+          const currentScrollX = scrollProgress * (totalWidth - window.innerWidth);
+          const viewportCenter = window.innerWidth / 2;
 
-            gsap.to(content, {
-              x: 0,
-              opacity: 1,
-              scale: 1,
-              duration: 1.2,
-              ease: 'back.out(1.7)',
-              delay: 0.3,
-            });
+          panelData.forEach(({ panel, content, background, panelStart }) => {
+            const panelCenter = panelStart + window.innerWidth / 2;
+            const distanceFromCenter = Math.abs(currentScrollX + viewportCenter - panelCenter);
+            const maxDistance = window.innerWidth * 0.6;
+            const visibility = Math.max(0, Math.min(1, 1 - distanceFromCenter / maxDistance));
 
-            gsap.to(background, {
-              scale: 1,
-              duration: 2,
-              ease: 'power2.out',
-            });
-          },
-          onEnterBack: () => {
-            gsap.to(panel, {
-              opacity: 1,
-              rotationY: 0,
-              scale: 1,
-              duration: 1.5,
-              ease: 'power2.out',
-            });
+            if (visibility > 0.05) {
+              // Panel is visible
+              gsap.to(panel, {
+                opacity: visibility,
+                rotationY: 0,
+                scale: 0.8 + (visibility * 0.2),
+                duration: 0.2,
+                ease: 'power1.out',
+              });
 
-            gsap.to(content, {
-              x: 0,
-              opacity: 1,
-              scale: 1,
-              duration: 1.2,
-              ease: 'back.out(1.7)',
-              delay: 0.3,
-            });
-          },
-          onLeave: () => {
-            gsap.to(panel, {
-              opacity: 0,
-              rotationY: 30,
-              scale: 0.9,
-              duration: 1,
-              ease: 'power2.in',
-            });
+              if (content) {
+                gsap.to(content, {
+                  x: 0,
+                  opacity: visibility,
+                  scale: 0.9 + (visibility * 0.1),
+                  duration: 0.2,
+                  ease: 'power1.out',
+                });
+              }
 
-            gsap.to(content, {
-              x: -100,
-              opacity: 0,
-              scale: 0.8,
-              duration: 0.8,
-              ease: 'power2.in',
-            });
-          },
-          onLeaveBack: () => {
-            gsap.to(panel, {
-              opacity: 0,
-              rotationY: -30,
-              scale: 0.9,
-              duration: 1,
-              ease: 'power2.in',
-            });
+              if (background) {
+                gsap.to(background, {
+                  scale: 1.2 - (visibility * 0.2),
+                  duration: 0.2,
+                  ease: 'power1.out',
+                });
+              }
+            } else {
+              // Panel is out of view
+              const isBefore = (currentScrollX + viewportCenter) < panelCenter;
+              gsap.to(panel, {
+                opacity: 0,
+                rotationY: isBefore ? -30 : 30,
+                scale: 0.8,
+                duration: 0.2,
+                ease: 'power1.in',
+              });
 
-            gsap.to(content, {
-              x: 100,
-              opacity: 0,
-              scale: 0.8,
-              duration: 0.8,
-              ease: 'power2.in',
-            });
-          },
-        });
+              if (content) {
+                gsap.to(content, {
+                  x: isBefore ? 100 : -100,
+                  opacity: 0,
+                  scale: 0.8,
+                  duration: 0.2,
+                  ease: 'power1.in',
+                });
+              }
+            }
+          });
+        },
+      });
 
-        // Add hover effects
+      // Add hover effects to panels
+      panelData.forEach(({ panel, content, background }) => {
         const handleMouseEnter = () => {
-          gsap.to(content, {
-            x: -10,
-            scale: 1.05,
-            duration: 0.6,
-            ease: 'power2.out',
-          });
+          if (content) {
+            gsap.to(content, {
+              x: -10,
+              scale: 1.05,
+              duration: 0.6,
+              ease: 'power2.out',
+            });
+          }
 
-          gsap.to(background, {
-            scale: 1.1,
-            duration: 0.8,
-            ease: 'power2.out',
-          });
+          if (background) {
+            gsap.to(background, {
+              scale: 1.1,
+              duration: 0.8,
+              ease: 'power2.out',
+            });
+          }
         };
 
         const handleMouseLeave = () => {
-          gsap.to(content, {
-            x: 0,
-            scale: 1,
-            duration: 0.6,
-            ease: 'power2.out',
-          });
+          if (content) {
+            gsap.to(content, {
+              x: 0,
+              scale: 1,
+              duration: 0.6,
+              ease: 'power2.out',
+            });
+          }
 
-          gsap.to(background, {
-            scale: 1,
-            duration: 0.8,
-            ease: 'power2.out',
-          });
+          if (background) {
+            gsap.to(background, {
+              scale: 1,
+              duration: 0.8,
+              ease: 'power2.out',
+            });
+          }
         };
 
         panel.addEventListener('mouseenter', handleMouseEnter);
         panel.addEventListener('mouseleave', handleMouseLeave);
-
-        // Cleanup event listeners
-        return () => {
-          panel.removeEventListener('mouseenter', handleMouseEnter);
-          panel.removeEventListener('mouseleave', handleMouseLeave);
-        };
       });
 
     }, galleryRef);
@@ -366,7 +402,7 @@ const MoctalGallery = () => {
       </div>
 
       {/* Custom CSS for horizontal bounce animation */}
-      <style jsx>{`
+      <style>{`
         @keyframes bounce-horizontal {
           0%, 100% {
             transform: translateX(-25%);

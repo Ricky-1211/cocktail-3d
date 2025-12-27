@@ -12,40 +12,60 @@ const Contact = () => {
   const infoRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (!sectionRef.current || !titleRef.current) return;
+
     const ctx = gsap.context(() => {
+      // Set initial visible state
+      gsap.set([titleRef.current, infoRef.current, contactRef.current?.children], {
+        opacity: 1,
+        visibility: 'visible',
+      });
+
       gsap.from(titleRef.current, {
         opacity: 0,
         y: 60,
         scrollTrigger: {
           trigger: sectionRef.current,
-          start: 'top 70%',
-          end: 'top 40%',
-          scrub: 1,
-        },
-      });
-
-      gsap.from(infoRef.current, {
-        opacity: 0,
-        scale: 0.8,
-        scrollTrigger: {
-          trigger: infoRef.current,
           start: 'top 80%',
           end: 'top 50%',
           scrub: 1,
+          toggleActions: 'play none none reverse',
         },
       });
 
-      gsap.from(contactRef.current?.children || [], {
-        opacity: 0,
-        x: -30,
-        stagger: 0.15,
-        scrollTrigger: {
-          trigger: contactRef.current,
-          start: 'top 75%',
-          end: 'top 45%',
-          scrub: 1,
-        },
-      });
+      if (infoRef.current) {
+        gsap.from(infoRef.current, {
+          opacity: 0,
+          scale: 0.8,
+          scrollTrigger: {
+            trigger: infoRef.current,
+            start: 'top 85%',
+            end: 'top 55%',
+            scrub: 1,
+            toggleActions: 'play none none reverse',
+          },
+        });
+      }
+
+      if (contactRef.current?.children) {
+        gsap.from(Array.from(contactRef.current.children), {
+          opacity: 0,
+          x: -30,
+          stagger: 0.15,
+          scrollTrigger: {
+            trigger: contactRef.current,
+            start: 'top 80%',
+            end: 'top 50%',
+            scrub: 1,
+            toggleActions: 'play none none reverse',
+          },
+        });
+      }
+
+      // Refresh ScrollTrigger after a short delay to ensure proper calculation
+      setTimeout(() => {
+        ScrollTrigger.refresh();
+      }, 100);
     }, sectionRef);
 
     return () => ctx.revert();
@@ -110,7 +130,7 @@ const Contact = () => {
       <div className="relative z-10 max-w-6xl mx-auto w-full">
         <h2
           ref={titleRef}
-          className="font-display text-5xl md:text-7xl font-bold text-gradient-gold text-center mb-8"
+          className="font-display text-5xl md:text-7xl font-bold text-gradient-gold text-center mb-8 opacity-100"
         >
           Get in Touch
         </h2>
@@ -118,7 +138,7 @@ const Contact = () => {
         {/* Contact Introduction */}
         <div
           ref={infoRef}
-          className="max-w-3xl mx-auto mb-16 text-center"
+          className="max-w-3xl mx-auto mb-16 text-center opacity-100"
         >
           <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-8 backdrop-blur-sm">
             <div className="flex items-center justify-center gap-3 mb-4">
@@ -154,7 +174,7 @@ const Contact = () => {
         </div>
 
         {/* Contact Methods */}
-        <div ref={contactRef} className="grid grid-cols-1 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
+        <div ref={contactRef} className="grid grid-cols-1 lg:grid-cols-3 gap-6 max-w-6xl mx-auto opacity-100">
           {contactMethods.map((method, index) => {
             const IconComponent = method.icon;
             return (

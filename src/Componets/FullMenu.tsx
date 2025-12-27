@@ -370,6 +370,29 @@ const FullMenu = () => {
     return item?.quantity || 0;
   };
 
+  const handleAddToCart = (mocktail: Mocktail) => {
+    addToCart(mocktail);
+  };
+
+  const handleIncreaseQuantity = (id: string) => {
+    const currentQuantity = getQuantity(id);
+    if (currentQuantity === 0) {
+      const mocktail = fullMocktails.find(m => m.id === id);
+      if (mocktail) {
+        addToCart(mocktail);
+      }
+    } else {
+      updateQuantity(id, currentQuantity + 1);
+    }
+  };
+
+  const handleDecreaseQuantity = (id: string) => {
+    const currentQuantity = getQuantity(id);
+    if (currentQuantity > 0) {
+      updateQuantity(id, currentQuantity - 1);
+    }
+  };
+
   const categories = ['all', 'classic', 'signature', 'seasonal', 'premium'];
 
   return (
@@ -483,32 +506,36 @@ const FullMenu = () => {
                 </div>
 
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
+                  {getQuantity(mocktail.id) === 0 ? (
                     <button
-                      onClick={() => updateQuantity(mocktail.id, Math.max(0, getQuantity(mocktail.id) - 1))}
-                      className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center hover:bg-primary/20 transition-colors text-xs disabled:opacity-50"
-                      disabled={getQuantity(mocktail.id) === 0}
+                      onClick={() => handleAddToCart(mocktail)}
+                      className="w-full flex items-center justify-center space-x-1 bg-gradient-to-r from-primary to-accent text-white px-4 py-2 rounded-full font-semibold hover:scale-105 transform transition-all duration-300 hover:shadow-lg hover:shadow-primary/25 text-sm"
                     >
-                      -
+                      <ShoppingCart className="w-4 h-4" />
+                      <span>Add to Cart</span>
                     </button>
-                    <span className="font-semibold text-foreground min-w-6 text-center text-sm">
-                      {getQuantity(mocktail.id)}
-                    </span>
-                    <button
-                      onClick={() => updateQuantity(mocktail.id, getQuantity(mocktail.id) + 1)}
-                      className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center hover:bg-primary/20 transition-colors text-xs"
-                    >
-                      +
-                    </button>
-                  </div>
-
-                  <button
-                    onClick={() => addToCart(mocktail)}
-                    className="flex items-center space-x-1 bg-gradient-to-r from-primary to-accent text-white px-3 py-2 rounded-full font-semibold hover:scale-105 transform transition-all duration-300 hover:shadow-lg hover:shadow-primary/25 text-sm"
-                  >
-                    <ShoppingCart className="w-3 h-3" />
-                    <span>Add</span>
-                  </button>
+                  ) : (
+                    <div className="flex items-center space-x-3 w-full">
+                      <button
+                        onClick={() => handleDecreaseQuantity(mocktail.id)}
+                        className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center hover:bg-primary/20 transition-colors text-sm font-bold"
+                      >
+                        -
+                      </button>
+                      <span className="font-semibold text-foreground min-w-8 text-center text-base">
+                        {getQuantity(mocktail.id)}
+                      </span>
+                      <button
+                        onClick={() => handleIncreaseQuantity(mocktail.id)}
+                        className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center hover:bg-primary/20 transition-colors text-sm font-bold"
+                      >
+                        +
+                      </button>
+                      <span className="ml-auto text-sm text-muted-foreground">
+                        ${(mocktail.price * getQuantity(mocktail.id)).toFixed(2)}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

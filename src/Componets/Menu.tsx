@@ -10,29 +10,46 @@ const Menu = () => {
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (!sectionRef.current || !titleRef.current || !menuRef.current) return;
+
     const ctx = gsap.context(() => {
+      // Set initial visible state
+      gsap.set([titleRef.current, menuRef.current?.children], {
+        opacity: 1,
+        visibility: 'visible',
+      });
+
       gsap.from(titleRef.current, {
         opacity: 0,
         y: 60,
         scrollTrigger: {
           trigger: sectionRef.current,
-          start: 'top 70%',
-          end: 'top 40%',
+          start: 'top 80%',
+          end: 'top 50%',
           scrub: 1,
+          toggleActions: 'play none none reverse',
         },
       });
 
-      gsap.from(menuRef.current?.children || [], {
-        opacity: 0,
-        x: -30,
-        stagger: 0.15,
-        scrollTrigger: {
-          trigger: menuRef.current,
-          start: 'top 75%',
-          end: 'top 45%',
-          scrub: 1,
-        },
-      });
+      if (menuRef.current?.children) {
+        gsap.from(Array.from(menuRef.current.children), {
+          opacity: 0,
+          x: -30,
+          stagger: 0.15,
+          scrollTrigger: {
+            trigger: menuRef.current,
+            start: 'top 80%',
+            end: 'top 50%',
+            scrub: 1,
+            toggleActions: 'play none none reverse',
+          },
+        });
+      }
+
+      // Refresh ScrollTrigger after a short delay to ensure proper calculation
+      setTimeout(() => {
+        ScrollTrigger.refresh();
+      }, 100);
     }, sectionRef);
 
     return () => ctx.revert();
@@ -58,12 +75,12 @@ const Menu = () => {
       <div className="relative z-10 max-w-4xl mx-auto w-full">
         <h2
           ref={titleRef}
-          className="font-display text-5xl md:text-7xl font-bold text-gradient-gold text-center mb-16"
+          className="font-display text-5xl md:text-7xl font-bold text-gradient-gold text-center mb-16 opacity-100"
         >
           Our Menu
         </h2>
 
-        <div ref={menuRef} className="space-y-6">
+        <div ref={menuRef} className="space-y-6 opacity-100">
           {menuItems.map((item, index) => (
             <div
               key={index}

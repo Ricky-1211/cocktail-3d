@@ -1,7 +1,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { useAuth } from './AuthContext';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { MocktailOrder } from '../Componets/types/index.ts';
 import Navbar from '../Componets/Navbar.tsx';
 import { gsap } from 'gsap';
@@ -35,6 +35,7 @@ interface AuthContextType {
 const Profile = () => {
   const { user, updateProfile, getUserOrders, logout } = useAuth() as AuthContextType;
   const navigate = useNavigate();
+  const location = useLocation();
   const [isEditing, setIsEditing] = useState(false);
   const [orders, setOrders] = useState<MocktailOrder[]>([]);
   const [formData, setFormData] = useState({
@@ -82,8 +83,24 @@ const Profile = () => {
       preferences: user.preferences || [],
     });
 
-    setOrders(getUserOrders() || []);
+    // Load orders
+    const loadOrders = () => {
+      const userOrders = getUserOrders() || [];
+      setOrders(userOrders);
+    };
+    
+    loadOrders();
     setIsLoading(false);
+    
+    // Refresh orders when window gains focus (user navigates back to profile)
+    const handleFocus = () => {
+      loadOrders();
+    };
+    
+    window.addEventListener('focus', handleFocus);
+    
+    // Also refresh orders when location changes
+    loadOrders();
 
     // Background animation with 3D effect
     if (backgroundContainerRef.current) {
@@ -109,6 +126,10 @@ const Profile = () => {
         // Glass container
         const glassContainer = document.createElement('div');
         glassContainer.className = 'relative';
+        
+        // Glass shape wrapper
+        const glassShape = document.createElement('div');
+        glassShape.className = 'relative';
         
         // Glass bowl (main part)
         const glassBowl = document.createElement('div');
@@ -347,13 +368,16 @@ const Profile = () => {
 
     return () => {
       lenis.destroy();
-      clearInterval(animationInterval);
+      if (animationInterval) {
+        clearInterval(animationInterval);
+      }
       gsap.killTweensOf('*'); // Kill all GSAP animations to prevent memory leaks
       if (backgroundElements && backgroundElements.parentNode) {
         backgroundElements.parentNode.removeChild(backgroundElements);
       }
+      window.removeEventListener('focus', handleFocus);
     };
-  }, [user, navigate, getUserOrders]);
+  }, [user, navigate, getUserOrders, location.pathname]);
 
   const handleSave = () => {
     updateProfile(formData);

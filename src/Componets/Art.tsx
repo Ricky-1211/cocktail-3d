@@ -32,7 +32,15 @@ const Art = () => {
   const particlesRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (!sectionRef.current || !titleRef.current || !cardsRef.current) return;
+
     const ctx = gsap.context(() => {
+      // Set initial visible state
+      gsap.set([titleRef.current, cardsRef.current?.children], {
+        opacity: 1,
+        visibility: 'visible',
+      });
+
       // Enhanced title animation with 3D effect
       gsap.from(titleRef.current, {
         opacity: 0,
@@ -42,25 +50,29 @@ const Art = () => {
         scrollTrigger: {
           trigger: sectionRef.current,
           start: 'top 80%',
-          end: 'top 40%',
+          end: 'top 50%',
           scrub: 1,
+          toggleActions: 'play none none reverse',
         },
       });
 
       // Staggered card animations with 3D effects
-      gsap.from(cardsRef.current?.children || [], {
-        opacity: 0,
-        y: 60,
-        rotationY: 20,
-        stagger: 0.3,
-        duration: 1.2,
-        scrollTrigger: {
-          trigger: cardsRef.current,
-          start: 'top 80%',
-          end: 'top 40%',
-          scrub: 1,
-        },
-      });
+      if (cardsRef.current?.children) {
+        gsap.from(Array.from(cardsRef.current.children), {
+          opacity: 0,
+          y: 60,
+          rotationY: 20,
+          stagger: 0.3,
+          duration: 1.2,
+          scrollTrigger: {
+            trigger: cardsRef.current,
+            start: 'top 80%',
+            end: 'top 50%',
+            scrub: 1,
+            toggleActions: 'play none none reverse',
+          },
+        });
+      }
 
       // Floating particles animation
       if (particlesRef.current) {
@@ -84,21 +96,29 @@ const Art = () => {
       }
 
       // Hover animations for cards
-      cardsRef.current?.childNodes.forEach((card) => {
-        gsap.to(card, {
-          y: -10,
-          duration: 0.3,
-          paused: true,
-          ease: 'power2.out',
-        });
+      if (cardsRef.current) {
+        cardsRef.current.childNodes.forEach((card) => {
+          const cardElement = card as HTMLElement;
+          gsap.to(cardElement, {
+            y: -10,
+            duration: 0.3,
+            paused: true,
+            ease: 'power2.out',
+          });
 
-        card.addEventListener('mouseenter', () => {
-          gsap.to(card, { y: -10, duration: 0.3 });
+          cardElement.addEventListener('mouseenter', () => {
+            gsap.to(cardElement, { y: -10, duration: 0.3 });
+          });
+          cardElement.addEventListener('mouseleave', () => {
+            gsap.to(cardElement, { y: 0, duration: 0.3 });
+          });
         });
-        card.addEventListener('mouseleave', () => {
-          gsap.to(card, { y: 0, duration: 0.3 });
-        });
-      });
+      }
+
+      // Refresh ScrollTrigger after a short delay to ensure proper calculation
+      setTimeout(() => {
+        ScrollTrigger.refresh();
+      }, 100);
     }, sectionRef);
 
     return () => ctx.revert();
@@ -241,7 +261,7 @@ const Art = () => {
         <div className="text-center mb-20">
           <h2
             ref={titleRef}
-            className="font-display text-5xl md:text-7xl lg:text-8xl font-bold text-gradient-gold mb-6"
+            className="font-display text-5xl md:text-7xl lg:text-8xl font-bold text-gradient-gold mb-6 opacity-100"
             style={{
               textShadow: '0 0 30px rgba(255,215,0,0.3)',
             }}
@@ -254,7 +274,7 @@ const Art = () => {
         </div>
 
         {/* Enhanced Cards Grid */}
-        <div ref={cardsRef} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div ref={cardsRef} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 opacity-100">
           {artPieces.map((piece) => (
             <div
               key={piece.id}
